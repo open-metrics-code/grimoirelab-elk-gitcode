@@ -56,6 +56,15 @@ GITCODE_MERGES = "gitcode_pulls"
 logger = logging.getLogger(__name__)
 
 
+def deep_get(dictionary, keys, default=None):
+    """递归获取字典深层的值"""
+    for key in keys:
+        if dictionary is None:
+            return default
+        dictionary = dictionary.get(key)
+    return dictionary or default
+
+
 class Mapping(BaseMapping):
 
     @staticmethod
@@ -386,9 +395,8 @@ class GitCodeEnrich(Enrich):
         rich_pr['closed_at'] = pull_request['closed_at']
         rich_pr['url'] = pull_request['html_url']
         rich_pr['review_mode'] = pull_request.get('review_mode')
-        labels = []
-        [labels.append(label['name']) for label in pull_request['labels'] if 'labels' in pull_request]
-        rich_pr['labels'] = labels
+        rich_pr['labels'] = [label['name'] for label in pull_request.get('labels', [])]
+        rich_pr['assignees_accept_count'] = sum(1 for a in pull_request['assignees'] if a.get('accept') is True and not a.get('login', '').lower().endswith('bot'))
 
         rich_pr['pull_request'] = True
         rich_pr['item_type'] = 'pull request'
@@ -610,6 +618,28 @@ class GitCodeEnrich(Enrich):
             rich_releases.append(rich_releases_dict)
         rich_repo['releases'] = rich_releases
         rich_repo['releases_count'] = len(rich_releases)
+        
+        
+        rich_branches = []
+        for branch in repo.get('branches', []):
+            rich_branches_item = {}
+            rich_branches_item["name"] = deep_get(branch, ["name"])
+            rich_branches_item["author_name"] = deep_get(branch, ["commit", "commit", "author", "name"])
+            rich_branches_item["author_date"] = deep_get(branch, ["commit", "commit", "author", "date"])
+            rich_branches_item["author_email"] = deep_get(branch, ["commit", "commit", "author", "email"])
+            rich_branches_item["committer_name"] = deep_get(branch, ["commit", "commit", "committer", "name"])
+            rich_branches_item["committer_date"] = deep_get(branch, ["commit", "commit", "committer", "date"])
+            rich_branches_item["committer_email"] = deep_get(branch, ["commit", "commit", "committer", "email"])
+            rich_branches_item["message"] = deep_get(branch, ["commit", "commit", "message"])
+            rich_branches_item["sha"] = deep_get(branch, ["commit", "sha"])
+            rich_branches_item["url"] = deep_get(branch, ["commit", "url"])
+            rich_branches_item["protected"] = deep_get(branch, ["protected"])
+            rich_branches_item["developers_can_push"] = branch.get("developers_can_push")
+            rich_branches_item["developers_can_merge"] = branch.get("developers_can_merge")
+            rich_branches.append(rich_branches_item)
+        rich_repo['branches'] = rich_branches
+        rich_repo['branches_count'] = len(rich_branches)
+        
 
         rich_repo["topics"] = repo.get('project_labels', [])
 
