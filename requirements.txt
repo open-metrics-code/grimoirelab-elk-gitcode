@@ -1,6 +1,6 @@
 elasticsearch==6.3.1
 elasticsearch-dsl==6.3.1
-requests==2.26.0
+requests==2.32.4
 urllib3==1.26.5
 PyMySQL>=0.7.0
 geopy>=1.20.0
